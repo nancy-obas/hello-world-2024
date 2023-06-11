@@ -3,12 +3,20 @@ pipeline {
     tools{
         maven 'M2_HOME'
     }
+    environment {
+    registry = '459513275178.dkr.ecr.us-east-1.amazonaws.com/devops-terra'
+    registryCredential = 'aws-credentials'
+    dockerimage = ''
+  }
     stages {
-        stage('Build'){
+        stage('Checkout'){
             steps{
-                sh 'mvn clean'
-                sh 'mvn install'
-                sh 'mvn package'
+                git branch: 'main', url: 'https://github.com/nancy-obas/hello-world-2024.git'
+            }
+        }
+        stage('Code Build') {
+            steps {
+                sh 'mvn clean package'
             }
         }
         stage('Test') {
@@ -16,16 +24,21 @@ pipeline {
                 sh 'mvn test'
             }
         }
-        stage('Deploy') {
+        stage('Build Image') {
             steps {
-                echo 'Deploy step'
-                sleep 10
+                script{
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+                } 
             }
         }
-        stage('Docker') {
-            steps {
-                echo 'Image step'
+        stage('Deploy image') {
+            steps{
+                script{ 
+                    docker.withRegistry("https://"+registry,"ecr:us-east-1:"+registryCredential) {
+                        dockerImage.push()
+                    }
+                }
             }
-        }
+        }  
     }
 }
